@@ -2,16 +2,18 @@ import pyautogui
 import time
 import random
 from card_reader import take_card_screenshot, recognize_card
-# Karten lesen: 880 400 - 1040 610
 
-# Ready: 950 700
+# Coordinates of Buttons/Clicks
+# Read card Area: 880 400 - 1040 610
 
-# Stage 1 & 2 & 3:
+# Ready button: 950 700
+
+# Stage 1 & 2 & 3 buttons:
 #   Red: 950 750
 #   Black: 950 800
 #   Forfeit: 950 850
 
-# Stage 2 & 3:
+# Stage 4 buttons:
 #   Hearts: 950 750
 #   Clubs: 950 800
 #   Diamond: 950 850
@@ -20,7 +22,7 @@ from card_reader import take_card_screenshot, recognize_card
 
 CARD_REGION = (880, 400, 160, 210)
 
-# Maus-Positionen:
+# button coordinates:
 POSITIONS = {
     "start_game": (950, 700),
     "red": (950, 750),
@@ -36,7 +38,7 @@ POSITIONS = {
     "spades": (950, 900),
 }
 
-# Kartenwerte Mapping
+# Mapping of card values
 CARD_VALUES = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6,
     '7': 7, '8': 8, '9': 9, '10': 10,
@@ -52,14 +54,14 @@ def read_card():
     img_path = take_card_screenshot(CARD_REGION)
     value, suit = recognize_card(img_path)
     if value and suit:
-        print(f"Karte erkannt: {value} of {suit}")
+        print(f"Card detected: {value} of {suit}")
         return value, suit
     else:
-        print("Keine Karte erkannt!")
+        print("No card detected!")
         return None, None
 
 def decide_phase2(first_card_value):
-    """Entscheidung für Phase 2: höher, tiefer oder kassieren"""
+    """decision of phase 2: higher, lower or forfeit"""
     num = CARD_VALUES.get(first_card_value, 0)
     if num < 9:
         click("higher")
@@ -72,7 +74,7 @@ def decide_phase2(first_card_value):
         return "cashout"
 
 def decide_phase3(first_value, second_value):
-    """Entscheidung für Phase 3: innen, außen oder kassieren"""
+    """decision for phase 3: inside, outside or forfeit"""
     num1 = CARD_VALUES.get(first_value, 0)
     num2 = CARD_VALUES.get(second_value, 0)
     diff = abs(num1 - num2)
@@ -87,7 +89,7 @@ def decide_phase3(first_value, second_value):
         return "cashout"
 
 def decide_symbol(known_suits):
-    """Entscheidung für Phase 4: welches Zeichen am wahrscheinlichsten"""
+    """decision for phase 4: card symbol"""
     all_suits = ['hearts', 'clubs', 'diamonds', 'spades']
     suit_counts = {suit: 0 for suit in all_suits}
 
@@ -99,7 +101,7 @@ def decide_symbol(known_suits):
 
     choice = random.choice(best_choices)
     click(choice)
-    print(f"Symbol gewählt: {choice}")
+    print(f"Symbol chosen: {choice}")
     return choice
 
 def check_phase1_answer(first_card_suit, decision):
@@ -118,7 +120,6 @@ def check_phase2_answer(first_card_value, second_card_value, decision):
     elif decision == "lower":
         return num2 < num1
     elif decision == "cashout":
-        # Immer korrekt bei cashout, da nichts riskiert wurde
         return True
     return False
 
@@ -140,7 +141,7 @@ def check_phase3_answer(first_card_value, second_card_value, third_card_value, d
 
 def main():
     while True:
-        print("Starte neuen Durchlauf...")
+        print("Starting new playthrough...")
 
         time.sleep(2)
 
@@ -148,62 +149,60 @@ def main():
         click("start_game")
         time.sleep(2)
 
-        # --- Phase 1: Rot wählen ---
+        # --- Phase 1: decision irrelevant, black may be chosen aswell ---
         click("red")
         time.sleep(2)
 
-        # --- Karte 1 lesen ---
+        # --- read card 1 ---
         first_value, first_suit = read_card()
         if not first_value:
-            continue  # Restart wenn keine Karte erkannt
+            continue  # restart if no card is detected
 
-        # --- Prüfen Phase 1 (rot/schwarz) ---
-        if not check_phase1_answer(first_suit, "red"):  # du hast immer "red" gedrückt
-            print("Phase 1 falsch geraten! Starte neu.")
+        # --- check if phase 1 answer was correct ---
+        if not check_phase1_answer(first_suit, "red"):  # if red was exchanged for black previously, insert black for red aswell
+            print("Phase 1 decision wrong! Restarting.")
             continue
 
         time.sleep(3)
 
-        # --- Phase 2: Höher/Tiefer/Einkassieren ---
+        # --- Phase 2: higher/lower/forfeit ---
         decision2 = decide_phase2(first_value)
         time.sleep(2)
 
-        # --- Karte 2 lesen ---
+        # --- read card 2 ---
         second_value, second_suit = read_card()
         if not second_value:
-            continue  # Restart
+            continue  # restart
 
-        # --- Entscheidung prüfen (optional) ---
-        # Hier könnte man prüfen, ob falsch geraten wurde und neu starten
+        # --- check phase 2 ---
         if not check_phase2_answer(first_value, second_value, decision2):
-            print("Phase 2 falsch geraten! Starte neu.")
+            print("Phase 2 decision wrong! Restarting.")
             continue
 
         time.sleep(3)
 
-        # --- Phase 3: Innen/Außen/Einkassieren ---
+        # --- Phase 3: inside/outside/forfeit ---
         decision3 = decide_phase3(first_value, second_value)
         time.sleep(2)
 
-        # --- Karte 3 lesen ---
+        # --- read card 3 ---
         third_value, third_suit = read_card()
         if not third_value:
             continue
 
-        # --- Entscheidung prüfen (optional) ---
-        # Hier könnte man prüfen, ob richtig oder falsch
+        # --- check phase 3 ---
         if not check_phase3_answer(first_value, second_value, third_value, decision3):
-            print("Phase 3 falsch geraten! Starte neu.")
+            print("Phase 3 decision wrong! Restarting.")
             continue
 
         time.sleep(3)
 
-        # --- Phase 4: Zeichen wählen ---
+        # --- Phase 4: choose symbol ---
         known_suits = [first_suit, second_suit, third_suit]
         decide_symbol(known_suits)
 
-        # --- Warten bis neuer Durchlauf möglich ---
-        time.sleep(5)
+        # --- wait for new playthrough ---
+        time.sleep(4)
 
 if __name__ == "__main__":
     main()
